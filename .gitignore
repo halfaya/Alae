@@ -1,0 +1,17 @@
+dist
+dist-newstyle
+.ghc*
+.stack-work
+.DS_Store
+*.mid
+*.agdai
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.ptb
+*.snm
+*.out
+*.toc
+*.vrb
