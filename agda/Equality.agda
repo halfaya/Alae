@@ -8,35 +8,50 @@ open import Cubical.Foundations.Function    using (_∘_)
 open import Cubical.Foundations.Univalence  using (ua)
 open import Cubical.Foundations.Isomorphism using (iso; Iso; isoToPath; section; retract)
 
-open import Data.Bool.Base using (Bool; true; false; _∧_)
-open import Data.Nat.Base  using (ℕ; zero; suc)
-open import Data.Product   using (_×_; proj₁; proj₂)
+open import Data.Bool.Base      using (Bool; true; false; _∧_)
+open import Data.Nat.Base       using (ℕ; zero; suc; _+_)
+open import Data.Fin            using (Fin; toℕ; fromℕ; #_; opposite) renaming (zero to fz; suc to fs)
+open import Data.Product        using (_×_; proj₁; proj₂)
 
 -- mutual recursion
-data Γ : Type
-data U : Γ → Type
+data Γ : ℕ → Type
+data U : {n : ℕ} → Γ n → Type
 
 -- context (snoc list of dependent types)
 data Γ where
-  ε   : Γ
-  _∙_ : (γ : Γ) → U γ → Γ
-  
+  ε   : Γ 0
+  _∙_ : {n : ℕ} → (γ : Γ n) → U γ → Γ (suc n)
+
+tail : {n : ℕ} → Γ (suc n) → Γ n
+tail (γ ∙ _) = γ
+
+drop : {n : ℕ} → (k : ℕ) → Γ (k + n) → Γ n
+drop zero    γ       = γ
+drop (suc k) (γ ∙ x) = drop k γ
+
+head : {n : ℕ} → (γ : Γ (suc n)) → U (tail γ)
+head (_ ∙ A) = A
+
+-- lookup a type in a context at position k
+lookup : {n : ℕ} → (k : ℕ) → (γ : Γ (k + suc n)) → U (tail (drop k γ))
+lookup k γ = head (drop k γ)
+
 -- type universe
 data U where
-  nat : {γ : Γ} → U γ
-  pi  : {γ : Γ} → (A : U γ) → U (γ ∙ A) → U γ
+  nat : {n : ℕ} → {γ : Γ n} → U γ
+  pi  : {n : ℕ} → {γ : Γ n} → (A : U γ) → U (γ ∙ A) → U γ
 
-data Term : (γ : Γ) → U γ → Type where
-  v0 : {γ : Γ} → {A : U γ} → Term γ A
-  tz : {γ : Γ} → Term γ nat -- zero
-  ts : {γ : Γ} → Term γ nat → Term γ nat -- suc
+data Term : {n : ℕ} → (γ : Γ n) → U γ → Type where
+--  v  : {n : ℕ} → (k : ℕ) → {γ : Γ (k + suc n)} → {A : U (tail (drop k γ))} → Term (tail (drop k γ)) A
+  v  : {n : ℕ} → (k : ℕ) → {γ : Γ (k + suc n)} → {A : U (tail (drop k γ))} → Term (tail (drop k γ)) A
+  tz : {n : ℕ} → {γ : Γ n} → Term γ nat -- zero
+  ts : {n : ℕ} → {γ : Γ n} → Term γ nat → Term γ nat -- suc
 --  tn : (P : Term nat → U) → Term (P tz) → ((n : Term nat) → Term (P n) → Term (P (ts n))) → (n : Term nat) → Term (P n) -- natrec
-  tλ : {γ : Γ} → {A : U γ} → {B : U (γ ∙ A)} → Term (γ ∙ A) B → Term γ (pi A B)
-  ta : {γ : Γ} → {A : U γ} → {B : U (γ ∙ A)} → Term γ (pi A B) → Term γ A → Term (γ ∙ A) B
+  tλ : {n : ℕ} → {γ : Γ n} → {A : U γ} → {B : U (γ ∙ A)} → Term (γ ∙ A) B → Term γ (pi A B)
+  ta : {n : ℕ} → {γ : Γ n} → {A : U γ} → {B : U (γ ∙ A)} → Term γ (pi A B) → Term γ A → Term (γ ∙ A) B
 
-
-+1 : Term ε (pi nat nat)
-+1 = tλ (ts v0)
+--+1 : Term ε (pi nat nat)
+--+1 = tλ {!!} --(v {n = 0} 0)
 
 data Eq : Type where
   eq : Eq -- equal
@@ -58,8 +73,8 @@ natrec P z s zero    = z
 natrec P z s (suc n) = s n (natrec P z s n)
 
 
-_+_ : ℕ → ℕ → ℕ
-_+_ = λ m → λ n → natrec (λ _ → ℕ) n (λ _ → suc) m
+_+'_ : ℕ → ℕ → ℕ
+_+'_ = λ m → λ n → natrec (λ _ → ℕ) n (λ _ → suc) m
 
 0=0 : 0 ≡ 0
 0=0 = refl
